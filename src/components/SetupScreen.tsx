@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Train, Clock, MapPin } from 'lucide-react'
+import { ArrowRight, Train, Clock, MapPin, Plus, Minus } from 'lucide-react'
 import { StationSelector } from './StationSelector'
 import { StationPickerMap, type PickMode } from './StationPickerMap'
 import { UK_STATIONS } from '../data/ukStations'
@@ -9,15 +9,17 @@ import {
   formatMinutes,
   haversineDistanceKm,
   nearestStationByMinutes,
+  nearestStationsByMinutes,
 } from '../utils/journey'
 
 interface SetupScreenProps {
   onStart: (journey: Journey) => void
 }
 
-const MIN_DURATION = 10
-const MAX_DURATION = 120
-const DURATION_PRESETS = [15, 30, 45, 60, 90]
+const MIN_DURATION = 3
+const MAX_DURATION = 180
+const DURATION_STEP = 1
+const DURATION_PRESETS = [15, 25, 45, 60, 90, 120]
 
 const INITIAL_FROM = UK_STATIONS.find((s) => s.crs === 'PAD') ?? UK_STATIONS[0]
 const INITIAL_DURATION = 45
@@ -37,6 +39,12 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const distance = hasRoute ? haversineDistanceKm(from, to) : null
 
   const canStart = Boolean(hasRoute && durationMinutes > 0)
+
+  // Candidate arrivals near the chosen focus time — the user can swap between
+  // them without changing the duration they picked.
+  const arrivalOptions = from
+    ? nearestStationsByMinutes(from, durationMinutes, UK_STATIONS, 4)
+    : []
 
   // The user picks an amount of minutes; we snap the destination to the station
   // whose rail journey best matches that time.
@@ -183,7 +191,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 type="range"
                 min={MIN_DURATION}
                 max={MAX_DURATION}
-                step={5}
+                step={DURATION_STEP}
                 value={durationMinutes}
                 onChange={(e) => handleDurationChange(Number(e.target.value))}
                 className="mt-3 w-full cursor-pointer accent-rail-accent"
@@ -193,36 +201,82 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 <span>{formatMinutes(MAX_DURATION)}</span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {DURATION_PRESETS.map((mins) => (
-                  <button
-                    key={mins}
-                    type="button"
-                    onClick={() => handleDurationChange(mins)}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                      durationMinutes === mins
-                        ? 'bg-rail-accent text-white'
-                        : 'border border-white/10 text-rail-muted hover:border-rail-accent/40 hover:text-rail-cream'
-                    }`}
-                  >
-                    {formatMinutes(mins)}
-                  </button>
-                ))}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDurationChange(Math.max(MIN_DURATION, durationMinutes - DURATION_STEP))
+                  }
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-rail-muted transition hover:border-rail-accent/40 hover:text-rail-cream"
+                  aria-label="Decrease focus duration"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <div className="flex flex-1 flex-wrap gap-2">
+                  {DURATION_PRESETS.map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => handleDurationChange(mins)}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition ${
+                        durationMinutes === mins
+                          ? 'bg-rail-accent text-white'
+                          : 'border border-white/10 text-rail-muted hover:border-rail-accent/40 hover:text-rail-cream'
+                      }`}
+                    >
+                      {formatMinutes(mins)}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDurationChange(Math.min(MAX_DURATION, durationMinutes + DURATION_STEP))
+                  }
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-rail-muted transition hover:border-rail-accent/40 hover:text-rail-cream"
+                  aria-label="Increase focus duration"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-rail-muted">Arrival match</span>
-                  <span className="font-semibold text-rail-cream">{to!.name}</span>
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-rail-muted">
+                  Arrival station
+                  <span className="ml-1 font-normal normal-case tracking-normal text-rail-muted/70">
+                    · nearest to {formatMinutes(durationMinutes)}
+                  </span>
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {arrivalOptions.map((station) => {
+                    const railTime = estimateJourneyMinutes(from, station)
+                    const km = Math.round(haversineDistanceKm(from, station))
+                    const active = to?.crs === station.crs
+                    return (
+                      <button
+                        key={station.crs}
+                        type="button"
+                        onClick={() => setTo(station)}
+                        className={`flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition ${
+                          active
+                            ? 'border-rail-accent bg-rail-accent/15 text-rail-cream'
+                            : 'border-white/10 text-rail-muted hover:border-rail-accent/40 hover:text-rail-cream'
+                        }`}
+                      >
+                        <span className="w-full truncate text-sm font-medium">{station.name}</span>
+                        <span className="text-xs text-rail-muted">
+                          {formatMinutes(railTime)} · {km} km
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-rail-muted">Distance</span>
-                  <span className="text-rail-cream">{Math.round(distance)} km</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-rail-muted">Rail time (approx)</span>
-                  <span className="text-rail-cream">{formatMinutes(estimated)}</span>
-                </div>
+                {to && !arrivalOptions.some((s) => s.crs === to.crs) && (
+                  <p className="mt-2 text-xs text-rail-muted">
+                    Heading to <span className="text-rail-cream">{to.name}</span> ·{' '}
+                    {formatMinutes(estimated)} · {Math.round(distance)} km
+                  </p>
+                )}
               </div>
             </div>
           )}

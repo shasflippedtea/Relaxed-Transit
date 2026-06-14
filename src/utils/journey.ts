@@ -19,37 +19,47 @@ export function haversineDistanceKm(a: Station, b: Station): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h))
 }
 
-/** Rough National Rail journey estimate: ~90 km/h average including stops */
+/**
+ * Rough National Rail journey estimate: a short boarding/dwell base plus
+ * ~80 km/h average. The low floor keeps short hops distinct (e.g. a 1 km and a
+ * 4 km journey differ) so quick focus sessions work, instead of everything
+ * flattening to a 15-minute minimum.
+ */
 export function estimateJourneyMinutes(from: Station, to: Station): number {
   const km = haversineDistanceKm(from, to)
-  const hours = km / 90
-  const minutes = Math.round(hours * 60)
-  return Math.max(15, Math.min(180, minutes))
+  const minutes = Math.round(2 + (km / 80) * 60)
+  return Math.max(3, Math.min(180, minutes))
 }
 
 /**
- * Pick the station whose estimated rail journey from `origin` is closest to
- * `minutes`. Used by the interactive focus-duration control so the chosen time
- * drives which destination the train heads for.
+ * Rank stations by how closely their estimated rail journey from `origin`
+ * matches `minutes`, closest first. Used by the interactive focus-duration
+ * control so the chosen time can suggest a set of candidate destinations.
+ */
+export function nearestStationsByMinutes(
+  origin: Station,
+  minutes: number,
+  stations: Station[],
+  count = 4,
+): Station[] {
+  return stations
+    .filter((s) => s.crs !== origin.crs)
+    .map((s) => ({ s, diff: Math.abs(estimateJourneyMinutes(origin, s) - minutes) }))
+    .sort((a, b) => a.diff - b.diff)
+    .slice(0, count)
+    .map((x) => x.s)
+}
+
+/**
+ * Pick the single station whose estimated rail journey from `origin` is closest
+ * to `minutes`.
  */
 export function nearestStationByMinutes(
   origin: Station,
   minutes: number,
   stations: Station[],
 ): Station | null {
-  let best: Station | null = null
-  let bestDiff = Infinity
-
-  for (const s of stations) {
-    if (s.crs === origin.crs) continue
-    const diff = Math.abs(estimateJourneyMinutes(origin, s) - minutes)
-    if (diff < bestDiff) {
-      bestDiff = diff
-      best = s
-    }
-  }
-
-  return best
+  return nearestStationsByMinutes(origin, minutes, stations, 1)[0] ?? null
 }
 
 export function interpolatePosition(
