@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Pause, Play, RotateCcw, Square } from 'lucide-react'
 import { JourneyMap } from './JourneyMap'
 import { TrainSprite, BulletTrainIcon } from './TrainSprite'
 import type { Journey, SessionStatus } from '../types/station'
 import { formatDuration } from '../utils/journey'
+import completedSoundUrl from '../assets/completedsound.mp3'
 
 interface FocusSessionProps {
   journey: Journey
@@ -17,6 +18,22 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
 
   const remaining = Math.max(0, totalSeconds - elapsed)
   const progress = totalSeconds > 0 ? elapsed / totalSeconds : 0
+
+  const completeSound = useRef<HTMLAudioElement | null>(null)
+  if (!completeSound.current) {
+    completeSound.current = new Audio(completedSoundUrl)
+  }
+
+  // Play the arrival chime once the journey completes.
+  useEffect(() => {
+    if (status !== 'complete') return
+    const audio = completeSound.current
+    if (!audio) return
+    audio.currentTime = 0
+    audio.play().catch(() => {
+      /* autoplay may be blocked until the user interacts — safe to ignore */
+    })
+  }, [status])
 
   useEffect(() => {
     if (status !== 'running') return
