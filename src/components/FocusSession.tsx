@@ -24,14 +24,13 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
     completeSound.current = new Audio(completedSoundUrl)
   }
 
-  // Play the arrival chime once the journey completes.
   useEffect(() => {
     if (status !== 'complete') return
     const audio = completeSound.current
     if (!audio) return
     audio.currentTime = 0
     audio.play().catch(() => {
-      /* autoplay may be blocked until the user interacts — safe to ignore */
+      
     })
   }, [status])
 
@@ -82,14 +81,8 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
       <div className="flex w-full flex-col border-t border-white/10 bg-rail-deep lg:w-[380px] lg:border-t-0 lg:border-l">
         <div className="flex flex-1 flex-col p-6 lg:p-8">
           <div className="mb-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-rail-muted">
-              Your journey
-            </p>
-            <h2 className="mt-1 font-display text-2xl font-bold text-rail-cream">
-              {from.name.split(' ').slice(-2).join(' ')} → {to.name.split(' ').slice(-2).join(' ')}
-            </h2>
-            <p className="mt-1 text-sm text-rail-muted">
-              {from.crs} to {to.crs}
+            <p className="text-sm font-semibold uppercase tracking-widest text-rail-muted">
+              {from.crs} → {to.crs}
             </p>
           </div>
 
@@ -138,21 +131,23 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
           </div>
 
           {/* Status message */}
-          <div className="mb-8 rounded-xl border border-white/10 bg-rail-panel/40 p-4 text-center text-sm text-rail-muted">
-            {status === 'running' && (
-              <>Sit back. The train is moving — focus until you reach {to.name}.</>
-            )}
-            {status === 'paused' && <>Journey paused. Resume when you&apos;re ready.</>}
-            {status === 'complete' && (
-              <>
-                Welcome to <span className="font-medium text-rail-cream">{to.name}</span>.
-                Well done on your focus session.
-              </>
-            )}
+          <div className="mb-8 flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-rail-panel/40 p-4">
+            <p className="text-center text-sm text-rail-muted">
+              {status === 'running' && (
+                <>Sit back. The train is moving — focus until you reach {to.name}.</>
+              )}
+              {status === 'paused' && <>Journey paused. Resume when you&apos;re ready.</>}
+              {status === 'complete' && (
+                <>
+                  Welcome to <span className="font-medium text-rail-cream">{to.name}</span>.
+                  Well done on your focus session.
+                </>
+              )}
+            </p>
           </div>
 
           {/* Controls */}
-          <div className="mt-auto flex gap-3">
+          <div className="flex gap-3">
             {status !== 'complete' ? (
               <>
                 <button
