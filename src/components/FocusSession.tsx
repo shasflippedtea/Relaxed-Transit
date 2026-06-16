@@ -15,6 +15,9 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
   const totalSeconds = journey.durationMinutes * 60
   const [elapsed, setElapsed] = useState(0)
   const [status, setStatus] = useState<SessionStatus>('running')
+  // Direction can flip when the user takes the return trip, so track it locally.
+  const [from, setFrom] = useState(journey.from)
+  const [to, setTo] = useState(journey.to)
 
   const remaining = Math.max(0, totalSeconds - elapsed)
   const progress = totalSeconds > 0 ? elapsed / totalSeconds : 0
@@ -54,12 +57,13 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
     setStatus((s) => (s === 'running' ? 'paused' : s === 'paused' ? 'running' : s))
   }, [])
 
-  const reset = useCallback(() => {
+  // "Return" swaps the direction (A→B becomes B→A) and restarts the journey.
+  const goReturn = useCallback(() => {
+    setFrom(to)
+    setTo(from)
     setElapsed(0)
     setStatus('running')
-  }, [])
-
-  const { from, to } = journey
+  }, [from, to])
 
   return (
     <div className="flex h-full flex-col lg:flex-row">
@@ -178,10 +182,10 @@ export function FocusSession({ journey, onEnd }: FocusSessionProps) {
               <>
                 <button
                   type="button"
-                  onClick={reset}
+                  onClick={goReturn}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 py-3.5 font-semibold transition hover:border-rail-accent/40"
                 >
-                  <RotateCcw className="h-4 w-4" /> Again
+                  <RotateCcw className="h-4 w-4" /> Return
                 </button>
                 <button
                   type="button"
