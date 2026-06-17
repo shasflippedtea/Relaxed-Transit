@@ -134,10 +134,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       <div className="w-full overflow-y-auto border-t border-white/10 bg-rail-navy lg:w-[420px] lg:border-t-0 lg:border-l">
         <div className="px-5 py-8 sm:px-8">
           <div className="mb-8">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-rail-accent/30 bg-rail-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-rail-accent-light">
-              <Train className="h-3 w-3" />
-              National Rail · UK
-            </div>
             <h1 className="font-display text-3xl font-bold tracking-tight text-rail-cream">
               Relaxed Transit
             </h1>
